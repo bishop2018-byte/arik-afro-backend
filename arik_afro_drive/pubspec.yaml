@@ -1,0 +1,28 @@
+name: arik_afro_drive
+description: "A new Flutter project."
+publish_to: 'none' 
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.3 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  
+  # --- YOUR ADDED PLUGINS ---
+  http: ^0.13.6            # For connecting to backend
+  geolocator: ^14.0.2     # For GPS Location
+  url_launcher: ^6.3.2    # ✅ NEW: For opening Google Maps
+  geocoding: ^4.0.0
+  google_maps_flutter: ^2.14.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
