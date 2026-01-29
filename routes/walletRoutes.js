@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');
+const pool = require('../db');
 const axios = require('axios');
 
 // 🔑 REPLACE THIS WITH YOUR PAYSTACK SECRET KEY (When you get one)

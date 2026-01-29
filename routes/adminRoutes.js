@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');
+const pool = require('../db');
 
 // 1. GET ALL USERS (With Wallet Balance)
 router.get('/users', async (req, res) => {

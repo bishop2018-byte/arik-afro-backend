@@ -1,7 +1,7 @@
 const { Client } = require('pg');
 
-// PASTE YOUR RENDER URL HERE
-const connectionString = 'postgres://arik_db_user:bRR6tHbVLsUdxEeTFnm1aLdM2cbmKFYv@dpg-d5tshc7gi27c738olmsg-a.frankfurt-postgres.render.com/arik_db?ssl=true';
+// 👇 THIS MUST BE YOUR RENDER URL (Copy from setup_db.js)
+const connectionString = 'postgresql://arik_db_user:bRR6tHbVLsUdxEeTFnm1aLdM2cbmKFYv@dpg-d5tshc7gi27c738olmsg-a.frankfurt-postgres.render.com/arik_db?ssl=true';
 
 const client = new Client({
   connectionString: connectionString,
@@ -13,11 +13,11 @@ const updateTables = async () => {
     await client.connect();
     console.log("🔌 Connected! Updating Database...");
 
-    // 1. Add PHONE column to Users table (if missing)
+    // 1. Add PHONE column to Users table
     try {
         await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);`);
-        console.log("✅ Added 'phone' column to Users.");
-    } catch(e) { console.log("Phone column check passed."); }
+        console.log("✅ Added 'phone' column.");
+    } catch(e) { console.log("Phone check passed."); }
 
     // 2. Add DRIVERS table
     await client.query(`
@@ -31,8 +31,7 @@ const updateTables = async () => {
       );
     `);
     console.log("✅ Created 'drivers' table.");
-
-    console.log("🎉 Database Updated!");
+    console.log("🎉 Database Sync Complete!");
   } catch (err) {
     console.error("❌ Error:", err);
   } finally {

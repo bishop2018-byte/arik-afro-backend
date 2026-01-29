@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require('../db');
 
 // --- 1. BOOK A TRIP ---
 exports.bookTrip = async (req, res) => {

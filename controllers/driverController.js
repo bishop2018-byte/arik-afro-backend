@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require('../db');
 
 // --- UPDATE DRIVER LOCATION ---
 exports.updateLocation = async (req, res) => {
