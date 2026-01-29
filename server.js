@@ -11,7 +11,7 @@ app.use(express.json());
 // --- ROUTES ---
 
 // 1. Auth (Login/Register)
-app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/users', require('./routes/authRoutes'));
 
 // 2. Driver & Trip Management
 app.use('/api/drivers', require('./routes/driverRoutes'));

@@ -8,5 +8,5 @@ class ApiConstants {
   */
 
   // OPTION B: For Production (Enabled!)
-  static String baseUrl = 'https://arik-api.onrender.com'; // 👈 Paste your Render URL here
+  static String baseUrl = 'https://arik-api.onrender.com/api'; // 👈 Paste your Render URL here
 }
