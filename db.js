@@ -4,28 +4,30 @@ const { Pool } = require('pg');
 let pool;
 
 if (process.env.DATABASE_URL) {
-  // ☁️ CLOUD MODE (Render)
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: {
-      // ✅ This is the critical line: it tells Node to trust Render's self-signed cert
-      rejectUnauthorized: false 
-    },
-    connectionTimeoutMillis: 10000, 
+    ssl: { rejectUnauthorized: false },
   });
-  console.log("🔌 Database: CLOUD mode with SSL bypass enabled. - db.js:16");
+  console.log('🔌 DB: Using cloud DATABASE_URL (ssl enabled) - db.js:11');
 } else {
-  // 💻 LOCAL MODE
   pool = new Pool({
     user: process.env.DB_USER || 'postgres',
     host: process.env.DB_HOST || 'localhost',
     database: process.env.DB_NAME || 'arik_afro_db',
     password: process.env.DB_PASSWORD || 'bishop2018',
-    port: 5432,
+    port: process.env.DB_PORT || 5432,
   });
-  console.log("🔌 Database: LOCAL mode. - db.js:26");
+  console.log('🔌 DB: Using local DB settings - db.js:20');
 }
 
-module.exports = {
-  query: (text, params) => pool.query(text, params),
-};
+pool
+  .connect()
+  .then((client) => {
+    client.release();
+    console.log('✅ Database connection successful - db.js:27');
+  })
+  .catch((err) => {
+    console.error('❌ Database connection failed: - db.js:30', err.message || err);
+  });
+
+module.exports = pool;
