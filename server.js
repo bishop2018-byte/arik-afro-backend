@@ -1,29 +1,34 @@
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
+const db = require('./db');
 const authRoutes = require('./routes/authRoutes');
 
-// Load environment variables
-dotenv.config();
-
 const app = express();
-
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// ✅ Health Check Endpoint
-// Purpose: Test if the server is alive by visiting the URL in your browser
-app.get('/', (req, res) => {
-  res.status(200).send('Arik Afro API is Live and Running!');
+// ✅ Advanced Health Check
+// Visit https://arik-api.onrender.com/status in your browser
+app.get('/status', async (req, res) => {
+  try {
+    await db.query('SELECT 1'); // Simple "heartbeat" query
+    res.status(200).json({ 
+      server: "Online", 
+      database: "Connected",
+      time: new Date().toISOString() 
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      server: "Online", 
+      database: "Disconnected", 
+      error: err.message 
+    });
+  }
 });
 
-// ✅ Routes
-// This matches your Flutter calls to '${ApiConstants.baseUrl}/api/auth/...'
 app.use('/api/auth', authRoutes);
 
-// Server Setup
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT} - server.js:28`);
+  console.log(`🚀 Server listening on port ${PORT} - server.js:33`);
 });
