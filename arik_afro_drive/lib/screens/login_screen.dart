@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-// import '../api_constants.dart'; // ❌ Commented out to ensure we use the hardcoded link
 
 import 'driver_dashboard.dart';
 import 'home_screen.dart';
 import 'role_selection_screen.dart';
-import 'admin_dashboard.dart'; 
+import 'admin_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,18 +19,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool isLoading = false;
 
-  // ✅ FIXED: DIRECT CLOUD LINK
+  // ✅ DIRECT CLOUD LINK
   final String baseUrl = "https://arik-api.onrender.com";
 
   Future<void> login() async {
-    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill in all fields")));
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please fill in all fields")));
       return;
     }
 
     setState(() => isLoading = true);
 
-    // ✅ FIXED: Using the direct Cloud URL
     final String url = '$baseUrl/api/auth/login';
 
     try {
@@ -39,74 +39,123 @@ class _LoginScreenState extends State<LoginScreen> {
         Uri.parse(url),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "email": _emailController.text.trim(),
+          "email":
+              _emailController.text.trim().toLowerCase(), // ✅ Normalize email
           "password": _passwordController.text.trim(),
         }),
       );
 
       if (response.statusCode == 200) {
-        var userData = jsonDecode(response.body);
-        
+        var responseData = jsonDecode(response.body);
+
+        // ✅ FIXED: Most backends nest the user data inside a 'user' object
+        // If your backend sends it directly, keep it as responseData
+        var user = responseData['user'] ?? responseData;
+        String role = user['role']?.toString().toLowerCase() ?? 'client';
+
         if (!mounted) return;
 
-        // Routing Logic
-        if (userData['role'] == 'driver') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => DriverDashboard(userData: userData)));
-        } else if (userData['role'] == 'admin') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminDashboard(userData: userData)));
+        // ✅ PASSING DATA: We send the 'user' data to the next screen
+        if (role == 'driver') {
+          Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => DriverDashboard(userData: user)));
+        } else if (role == 'admin') {
+          Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => AdminDashboard(userData: user)));
         } else {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(userData: userData)));
+          Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => HomeScreen(userData: user)));
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Login Failed. Check credentials.")));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Invalid Email or Password")));
       }
     } catch (e) {
-      print("Login Error: $e"); 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Server Connection Error. Check your internet.")));
+      debugPrint("Login Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Cannot connect to server. Ensure it is awake!")));
     }
 
-    setState(() => isLoading = false);
+    if (mounted) setState(() => isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Login"), backgroundColor: Colors.black, foregroundColor: Colors.white),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.white,
+          iconTheme: const IconThemeData(color: Colors.black)),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: SingleChildScrollView( // Added scroll view to prevent overflow on small screens
+        padding: const EdgeInsets.symmetric(horizontal: 30.0),
+        child: SingleChildScrollView(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(height: 50),
-              const Icon(Icons.local_taxi, size: 80, color: Colors.black),
+              const SizedBox(height: 40),
+              const Icon(Icons.local_taxi, size: 100, color: Colors.black),
               const SizedBox(height: 10),
-              const Text("Arik Afro Drive", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const Text("Arik Afro Drive",
+                  style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2)),
+              const SizedBox(height: 40),
+              TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: "Email Address",
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  )),
+              const SizedBox(height: 20),
+              TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: "Password",
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  )),
               const SizedBox(height: 30),
-
-              TextField(controller: _emailController, decoration: const InputDecoration(labelText: "Email", prefixIcon: Icon(Icons.email))),
-              const SizedBox(height: 10),
-              TextField(controller: _passwordController, decoration: const InputDecoration(labelText: "Password", prefixIcon: Icon(Icons.lock)), obscureText: true),
-              const SizedBox(height: 20),
-              
-              isLoading 
-                ? const CircularProgressIndicator(color: Colors.black)
-                : SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: login, 
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.black, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 15)),
-                      child: const Text("LOGIN"),
+              isLoading
+                  ? const CircularProgressIndicator(color: Colors.black)
+                  : SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: login,
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10))),
+                        child: const Text("LOGIN",
+                            style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                      ),
                     ),
-                  ),
-              
-              const SizedBox(height: 20),
-              
+              const SizedBox(height: 25),
               TextButton(
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const RoleSelectionScreen()));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const RoleSelectionScreen()));
                 },
-                child: const Text("Don't have an account? Register", style: TextStyle(color: Colors.black)),
+                child: const Text("Don't have an account? Register Here",
+                    style: TextStyle(
+                        color: Colors.black, fontWeight: FontWeight.w600)),
               )
             ],
           ),

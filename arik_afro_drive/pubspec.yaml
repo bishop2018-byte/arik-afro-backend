@@ -12,12 +12,16 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.6
   
-  # --- YOUR ADDED PLUGINS ---
-  http: ^0.13.6            # For connecting to backend
-  geolocator: ^14.0.2     # For GPS Location
-  url_launcher: ^6.3.2    # ✅ NEW: For opening Google Maps
-  geocoding: ^4.0.0
-  google_maps_flutter: ^2.14.0
+  # --- BACKEND & NETWORKING ---
+  http: ^1.1.0            # Updated for better compatibility with Node.js backends
+  
+  # --- LOCATION & GPS ---
+  geolocator: ^10.1.0      # Stable version for Flutter 3.x
+  geocoding: ^2.1.1        # Stable version for address conversion
+  
+  # --- MAPS & INTERACTION ---
+  google_maps_flutter: ^2.5.3  # Matches the latest Android/iOS standards
+  url_launcher: ^6.2.5         # Required for opening phone dialer or external maps
 
 dev_dependencies:
   flutter_test:

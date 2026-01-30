@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart'; 
-import 'package:google_maps_flutter/google_maps_flutter.dart'; 
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-// import '../api_constants.dart'; // ❌ Commented out to prevent potential import errors
 
 import 'login_screen.dart';
-import 'client_tracking_screen.dart'; 
-import 'wallet_screen.dart'; 
+import 'client_tracking_screen.dart';
+import 'wallet_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -24,49 +23,83 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _pickupController = TextEditingController();
   final TextEditingController _destController = TextEditingController();
 
-  // ✅ FIXED: DIRECT CLOUD LINK
   final String baseUrl = "https://arik-api.onrender.com";
 
+  @override
+  void initState() {
+    super.initState();
+    _checkLocationPermission();
+  }
+
+  // ✅ Ensures the app has permission to use GPS
+  Future<void> _checkLocationPermission() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      await Geolocator.requestPermission();
+    }
+  }
+
   void showBookingDialog(int driverId, String driverName) {
-    _pickupController.text = "My Current Location"; 
-    _destController.clear(); 
+    _pickupController.text = "My Current Location";
+    _destController.clear();
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: Text("Book Ride with $driverName"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Text("Book Ride with $driverName",
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: _pickupController, decoration: const InputDecoration(labelText: "Pickup", prefixIcon: Icon(Icons.my_location))),
-            TextField(controller: _destController, decoration: const InputDecoration(labelText: "Destination", prefixIcon: Icon(Icons.flag))),
+            TextField(
+                controller: _pickupController,
+                decoration: const InputDecoration(
+                    labelText: "Pickup Location",
+                    prefixIcon: Icon(Icons.my_location, color: Colors.blue))),
+            const SizedBox(height: 10),
+            TextField(
+                controller: _destController,
+                decoration: const InputDecoration(
+                    labelText: "Where to?",
+                    prefixIcon: Icon(Icons.flag, color: Colors.red))),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child:
+                  const Text("CANCEL", style: TextStyle(color: Colors.grey))),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context); 
-              bookRide(driverId, driverName, _pickupController.text, _destController.text);
+              if (_destController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text("Please enter a destination")));
+                return;
+              }
+              Navigator.pop(context);
+              bookRide(driverId, driverName, _pickupController.text,
+                  _destController.text);
             },
-            child: const Text("CONFIRM REQUEST"),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
+            child: const Text("CONFIRM", style: TextStyle(color: Colors.white)),
           )
         ],
       ),
     );
   }
 
-  Future<void> bookRide(int driverId, String driverName, String pickup, String dest) async {
+  Future<void> bookRide(
+      int driverId, String driverName, String pickup, String dest) async {
     final String url = '$baseUrl/api/trips/book';
-    // ✅ Check for both user_id and id to avoid null errors
-    int clientId = widget.userData['user_id'] ?? widget.userData['id']; 
+    int clientId = widget.userData['id'] ?? widget.userData['user_id'];
 
     try {
       final response = await http.post(
         Uri.parse(url),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "client_id": clientId, 
+          "client_id": clientId,
           "driver_id": driverId,
           "pickup_address": pickup,
           "destination_address": dest,
@@ -77,44 +110,49 @@ class _HomeScreenState extends State<HomeScreen> {
       if (response.statusCode == 200) {
         if (!mounted) return;
         Navigator.push(
-          context, 
-          MaterialPageRoute(builder: (context) => ClientTrackingScreen(
-            userId: clientId, 
-            userData: widget.userData, 
-          ))
-        );
+            context,
+            MaterialPageRoute(
+                builder: (context) => ClientTrackingScreen(
+                      userId: clientId,
+                      userData: widget.userData,
+                    )));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Failed to book ride. Check your wallet balance.")));
       }
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connection Error")));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Network Error: Could not reach server")));
     }
   }
 
   Future<void> findDrivers() async {
     setState(() => isLoading = true);
-    
+
     try {
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      mapController.animateCamera(CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)));
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      mapController.animateCamera(CameraUpdate.newLatLng(
+          LatLng(position.latitude, position.longitude)));
 
-      // ✅ FIXED: Using Cloud URL with coordinates
-      final String url = '$baseUrl/api/drivers/nearby?latitude=${position.latitude}&longitude=${position.longitude}';
+      final String url =
+          '$baseUrl/api/drivers/nearby?latitude=${position.latitude}&longitude=${position.longitude}';
       final response = await http.get(Uri.parse(url));
-      
-      if (response.statusCode == 200) {
-        List<dynamic> allDrivers = jsonDecode(response.body);
-        List<dynamic> validDrivers = allDrivers.where((d) => d['driver_id'] != null).toList();
 
+      if (response.statusCode == 200) {
+        List<dynamic> drivers = jsonDecode(response.body);
         setState(() {
-          nearbyDrivers = validDrivers;
+          nearbyDrivers = drivers;
           isLoading = false;
         });
       } else {
         setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No drivers found in your area.")));
       }
     } catch (e) {
       setState(() => isLoading = false);
-      print("Driver Find Error: $e");
+      debugPrint("Driver Find Error: $e");
     }
   }
 
@@ -126,105 +164,143 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              accountName: Text(widget.userData['full_name'] ?? "User"),
+              accountName: Text(
+                  widget.userData['full_name'] ??
+                      widget.userData['name'] ??
+                      "User",
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
               accountEmail: Text(widget.userData['email'] ?? ""),
-              currentAccountPicture: const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.person)),
+              currentAccountPicture: const CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: Icon(Icons.person, color: Colors.black, size: 40)),
               decoration: const BoxDecoration(color: Colors.black),
             ),
             ListTile(
-              leading: const Icon(Icons.account_balance_wallet, color: Colors.green),
+              leading:
+                  const Icon(Icons.account_balance_wallet, color: Colors.green),
               title: const Text("My Wallet"),
-              subtitle: const Text("Fund your account"),
               onTap: () {
-                Navigator.pop(context); 
-                Navigator.push(context, MaterialPageRoute(builder: (context) => WalletScreen(userData: widget.userData)));
+                Navigator.pop(context);
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            WalletScreen(userData: widget.userData)));
               },
             ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text("Logout"),
-              onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-              },
+              onTap: () => Navigator.pushReplacement(context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen())),
             )
           ],
         ),
       ),
-
       appBar: AppBar(
-        title: const Text("Arik Afro"),
+        title: const Text("ARIK AFRO",
+            style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        actions: [
+          IconButton(onPressed: findDrivers, icon: const Icon(Icons.refresh))
+        ],
       ),
-      
       body: Stack(
         children: [
           GoogleMap(
-            initialCameraPosition: const CameraPosition(
-              target: LatLng(6.5244, 3.3792), 
-              zoom: 14,
-            ),
+            initialCameraPosition:
+                const CameraPosition(target: LatLng(6.5244, 3.3792), zoom: 14),
             myLocationEnabled: true,
+            myLocationButtonEnabled: true,
             onMapCreated: (controller) => mapController = controller,
           ),
-
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: Container(
-              height: 400, 
+              height: 350,
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 15,
+                      offset: Offset(0, -2))
+                ],
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Where to?", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
+                  Container(
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10))),
+                  const SizedBox(height: 15),
                   SizedBox(
                     width: double.infinity,
+                    height: 55,
                     child: ElevatedButton.icon(
                       onPressed: findDrivers,
-                      icon: const Icon(Icons.search),
-                      label: const Text("FIND DRIVERS NEAR ME"),
+                      icon: const Icon(Icons.search, color: Colors.white),
+                      label: const Text("FIND NEARBY DRIVERS",
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black, 
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15)
-                      ),
+                          backgroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12))),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  const Divider(),
-                  
+                  const SizedBox(height: 20),
                   Expanded(
-                    child: isLoading 
-                    ? const Center(child: CircularProgressIndicator())
-                    : nearbyDrivers.isEmpty 
-                      ? const Center(child: Text("No drivers found yet."))
-                      : ListView.builder(
-                          itemCount: nearbyDrivers.length,
-                          itemBuilder: (context, index) {
-                            var driver = nearbyDrivers[index];
-                            double distance = (driver['distance'] as num).toDouble();
-                            return ListTile(
-                              leading: const CircleAvatar(child: Icon(Icons.drive_eta)),
-                              title: Text(driver['full_name'] ?? "Driver"),
-                              subtitle: Text("${distance.toStringAsFixed(1)} km away"),
-                              trailing: ElevatedButton(
-                                onPressed: () => showBookingDialog(driver['driver_id'], driver['full_name']),
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                                child: const Text("Book"),
+                    child: isLoading
+                        ? const Center(
+                            child:
+                                CircularProgressIndicator(color: Colors.black))
+                        : nearbyDrivers.isEmpty
+                            ? const Center(
+                                child: Text(
+                                    "Search to see available drivers near you",
+                                    style: TextStyle(color: Colors.grey)))
+                            : ListView.separated(
+                                itemCount: nearbyDrivers.length,
+                                separatorBuilder: (context, index) =>
+                                    const Divider(),
+                                itemBuilder: (context, index) {
+                                  var driver = nearbyDrivers[index];
+                                  return ListTile(
+                                    leading: const CircleAvatar(
+                                        backgroundColor: Colors.black12,
+                                        child: Icon(Icons.person,
+                                            color: Colors.black)),
+                                    title: Text(
+                                        driver['full_name'] ?? "Arik Driver",
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold)),
+                                    subtitle: Text(
+                                        "${(driver['distance'] as num).toStringAsFixed(1)} km away"),
+                                    trailing: ElevatedButton(
+                                      onPressed: () => showBookingDialog(
+                                          driver['driver_id'],
+                                          driver['full_name']),
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green),
+                                      child: const Text("BOOK",
+                                          style:
+                                              TextStyle(color: Colors.white)),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
                   )
                 ],
               ),

@@ -1,33 +1,27 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
-let pool;
+const isRenderInternal = process.env.DATABASE_URL && process.env.DATABASE_URL.includes('.internal');
 
-if (process.env.DATABASE_URL) {
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-  });
-  console.log('🔌 DB: Using cloud DATABASE_URL (ssl enabled) - db.js:11');
-} else {
-  pool = new Pool({
-    user: process.env.DB_USER || 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_NAME || 'arik_afro_db',
-    password: process.env.DB_PASSWORD || 'bishop2018',
-    port: process.env.DB_PORT || 5432,
-  });
-  console.log('🔌 DB: Using local DB settings - db.js:20');
+const poolConfig = {
+  connectionString: process.env.DATABASE_URL,
+};
+
+// ✅ Only use SSL if we are NOT on the internal network
+if (process.env.DATABASE_URL && !isRenderInternal) {
+  poolConfig.ssl = {
+    rejectUnauthorized: false
+  };
 }
 
-pool
-  .connect()
-  .then((client) => {
-    client.release();
-    console.log('✅ Database connection successful - db.js:27');
-  })
-  .catch((err) => {
-    console.error('❌ Database connection failed: - db.js:30', err.message || err);
-  });
+const pool = new Pool(poolConfig);
 
-module.exports = pool;
+pool.on('error', (err) => {
+  console.error('❌ Unexpected error on idle client - db.js:20', err);
+});
+
+console.log(isRenderInternal ? "🛡️ Using INTERNAL Private Network (No SSL) - db.js:23" : "☁️ Using EXTERNAL Network (SSL Enabled)");
+
+module.exports = {
+  query: (text, params) => pool.query(text, params),
+};

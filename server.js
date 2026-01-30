@@ -1,3 +1,7 @@
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // 🚀 FORCE BYPASS
+const express = require('express');
+const cors = require('cors');
+// ... rest of your code
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -19,7 +23,7 @@ app.get('/health', async (req, res) => {
     await pool.query('SELECT 1');
     return res.json({ status: 'ok', db: 'connected' });
   } catch (err) {
-    console.error('Health check DB error: - server.js:22', err.message || err);
+    console.error('Health check DB error: - server.js:26', err.message || err);
     return res.status(500).json({ status: 'fail', db: 'error', error: err.message || err });
   }
 });
@@ -28,13 +32,13 @@ app.use('/api/auth', authRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT} - server.js:31`);
-  console.log(`ENV: DATABASE_URL ${process.env.DATABASE_URL ? 'SET' : 'NOT SET'} - server.js:32`);
+  console.log(`🚀 Server is running on port ${PORT} - server.js:35`);
+  console.log(`ENV: DATABASE_URL ${process.env.DATABASE_URL ? 'SET' : 'NOT SET'} - server.js:36`);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at: - server.js:36', promise, 'reason:', reason);
+  console.error('Unhandled Rejection at: - server.js:40', promise, 'reason:', reason);
 });
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception thrown: - server.js:39', err);
+  console.error('Uncaught Exception thrown: - server.js:43', err);
 });
