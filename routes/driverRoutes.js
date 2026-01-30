@@ -1,13 +1,11 @@
-const router = require('express').Router();
+const express = require('express');
+const router = express.Router();
 const driverController = require('../controllers/driverController');
 
-// ✅ UPDATED FOR CLOUD
-// Route 1: Driver sends GPS updates
-// POST https://arik-api.onrender.com/api/drivers/update-location
-router.post('/update-location', driverController.updateLocation);
+// Debugging line: This will print in your terminal so we can see if functions loaded
+console.log("Loaded Controller Functions: - driverRoutes.js:6", Object.keys(driverController));
 
-// Route 2: Client searches for drivers
-// GET https://arik-api.onrender.com/api/drivers/nearby
+router.post('/update-location', driverController.updateLocation);
 router.get('/nearby', driverController.getNearbyDrivers);
 
 module.exports = router;
