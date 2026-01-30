@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geocoding/geocoding.dart'; 
+import 'package:geocoding/geocoding.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -12,13 +12,12 @@ class JourneyScreen extends StatefulWidget {
   final String pickupAddress;
   final String destinationAddress;
 
-  const JourneyScreen({
-    super.key, 
-    required this.tripId, 
-    required this.clientName,
-    required this.pickupAddress,
-    required this.destinationAddress
-  });
+  const JourneyScreen(
+      {super.key,
+      required this.tripId,
+      required this.clientName,
+      required this.pickupAddress,
+      required this.destinationAddress});
 
   @override
   State<JourneyScreen> createState() => _JourneyScreenState();
@@ -27,40 +26,46 @@ class JourneyScreen extends StatefulWidget {
 class _JourneyScreenState extends State<JourneyScreen> {
   // --- MAP VARIABLES ---
   final Completer<GoogleMapController> _controller = Completer();
-  Set<Marker> _markers = {};
+  final Set<Marker> _markers = {};
   LatLng? _pickupLocation;
-  
+
   // --- TRIP VARIABLES ---
   String status = "accepted"; // accepted -> started -> completed
   String fare = "0.00";
   String earnings = "0.00";
   bool isLoading = false;
 
+  // ✅ FIXED: DIRECT CLOUD LINK
+  final String baseUrl = "https://arik-api.onrender.com";
+
   @override
   void initState() {
     super.initState();
-    _loadMapData(); // Load the map pin immediately
+    _loadMapData();
   }
 
   // --- 🗺️ LOAD MAP PIN ---
   Future<void> _loadMapData() async {
     try {
-      List<Location> locations = await locationFromAddress(widget.pickupAddress);
+      List<Location> locations =
+          await locationFromAddress(widget.pickupAddress);
       if (locations.isNotEmpty) {
         setState(() {
-          _pickupLocation = LatLng(locations.first.latitude, locations.first.longitude);
-          
+          _pickupLocation =
+              LatLng(locations.first.latitude, locations.first.longitude);
+
           _markers.add(Marker(
             markerId: const MarkerId("pickup"),
             position: _pickupLocation!,
             infoWindow: InfoWindow(title: "Pickup: ${widget.clientName}"),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            icon:
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
           ));
         });
-        
-        // Zoom into the pin
+
         final GoogleMapController controller = await _controller.future;
-        controller.animateCamera(CameraUpdate.newLatLngZoom(_pickupLocation!, 15));
+        controller
+            .animateCamera(CameraUpdate.newLatLngZoom(_pickupLocation!, 15));
       }
     } catch (e) {
       print("Could not find address on map: $e");
@@ -69,13 +74,14 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
   // --- 🚗 OPEN EXTERNAL NAV ---
   Future<void> launchNavigation() async {
-    final String destination = Uri.encodeComponent(widget.pickupAddress); // Navigate to PICKUP first
+    final String destination = Uri.encodeComponent(widget.pickupAddress);
     final Uri navUrl = Uri.parse("google.navigation:q=$destination");
-    
+
     if (await canLaunchUrl(navUrl)) {
       await launchUrl(navUrl, mode: LaunchMode.externalApplication);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not open Maps app")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Could not open Maps app")));
     }
   }
 
@@ -83,20 +89,21 @@ class _JourneyScreenState extends State<JourneyScreen> {
   Future<void> startJourney() async {
     setState(() => isLoading = true);
     try {
+      // ✅ FIXED: Using Render Cloud URL
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:5000/api/trips/start'),
+        Uri.parse('$baseUrl/api/trips/start'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"trip_id": widget.tripId}),
       );
 
       if (response.statusCode == 200) {
         setState(() => status = "started");
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("🚙 Trip Started! Drive safe.")));
-        
-        // Optional: Switch navigation to destination now
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("🚙 Trip Started! Drive safe.")));
       }
-    } catch(e) { 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connection Error")));
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Connection Error")));
     }
     setState(() => isLoading = false);
   }
@@ -105,8 +112,9 @@ class _JourneyScreenState extends State<JourneyScreen> {
   Future<void> endJourney() async {
     setState(() => isLoading = true);
     try {
+      // ✅ FIXED: Using Render Cloud URL
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:5000/api/trips/end'),
+        Uri.parse('$baseUrl/api/trips/end'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"trip_id": widget.tripId}),
       );
@@ -120,7 +128,11 @@ class _JourneyScreenState extends State<JourneyScreen> {
         });
         _showPaymentPopup(data['symbol'] ?? '₦');
       }
-    } catch(e) { print(e); }
+    } catch (e) {
+      print(e);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Error ending trip")));
+    }
     setState(() => isLoading = false);
   }
 
@@ -136,19 +148,28 @@ class _JourneyScreenState extends State<JourneyScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text("Total Fare:", style: TextStyle(fontSize: 14)),
-            Text("$symbol $fare", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue)),
+            Text("$symbol $fare",
+                style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue)),
             const Divider(),
             const Text("Your Earnings:", style: TextStyle(fontSize: 14)),
-            Text("$symbol $earnings", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green)),
+            Text("$symbol $earnings",
+                style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green)),
           ],
         ),
         actions: [
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(ctx); 
+              Navigator.pop(ctx);
               Navigator.pop(context); // Return to Dashboard
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.black, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black, foregroundColor: Colors.white),
             child: const Text("Collect Cash & Close"),
           )
         ],
@@ -161,21 +182,18 @@ class _JourneyScreenState extends State<JourneyScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // LAYER 1: THE MAP (Full Screen)
           GoogleMap(
             initialCameraPosition: const CameraPosition(
-              target: LatLng(7.2571, 5.2058), // Default (Akure)
+              target: LatLng(7.2571, 5.2058),
               zoom: 14,
             ),
             markers: _markers,
             myLocationEnabled: true,
-            myLocationButtonEnabled: false, // We hide default button to not cover UI
+            myLocationButtonEnabled: false,
             onMapCreated: (GoogleMapController controller) {
               _controller.complete(controller);
             },
           ),
-
-          // LAYER 2: TOP BAR (Back Button)
           Positioned(
             top: 40,
             left: 20,
@@ -187,8 +205,6 @@ class _JourneyScreenState extends State<JourneyScreen> {
               ),
             ),
           ),
-
-          // LAYER 3: BOTTOM CARD (Controls)
           Positioned(
             bottom: 0,
             left: 0,
@@ -198,46 +214,58 @@ class _JourneyScreenState extends State<JourneyScreen> {
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, -2))],
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, -2))
+                ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Client Info
                   Row(
                     children: [
-                      const CircleAvatar(radius: 25, backgroundColor: Colors.black, child: Icon(Icons.person, color: Colors.white)),
+                      const CircleAvatar(
+                          radius: 25,
+                          backgroundColor: Colors.black,
+                          child: Icon(Icons.person, color: Colors.white)),
                       const SizedBox(width: 15),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(widget.clientName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          const Text("Cash Trip", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                          Text(widget.clientName,
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text("Cash Trip",
+                              style: TextStyle(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold)),
                         ],
                       ),
                       const Spacer(),
-                      // Navigation Button (Round)
                       FloatingActionButton.small(
                         onPressed: launchNavigation,
                         backgroundColor: Colors.blue,
-                        child: const Icon(Icons.navigation, color: Colors.white),
+                        child:
+                            const Icon(Icons.navigation, color: Colors.white),
                       ),
                     ],
                   ),
-                  
                   const SizedBox(height: 15),
                   const Divider(),
                   const SizedBox(height: 10),
-
-                  // Address Text
                   Row(
                     children: [
-                      Icon(status == "started" ? Icons.flag : Icons.my_location, color: Colors.red),
+                      Icon(status == "started" ? Icons.flag : Icons.my_location,
+                          color: Colors.red),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          status == "started" ? "Dest: ${widget.destinationAddress}" : "Pickup: ${widget.pickupAddress}",
+                          status == "started"
+                              ? "Dest: ${widget.destinationAddress}"
+                              : "Pickup: ${widget.pickupAddress}",
                           style: const TextStyle(fontSize: 16),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -245,10 +273,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
-
-                  // MAIN ACTION BUTTON
                   if (isLoading)
                     const Center(child: CircularProgressIndicator())
                   else if (status == "accepted")
@@ -257,11 +282,11 @@ class _JourneyScreenState extends State<JourneyScreen> {
                       child: ElevatedButton(
                         onPressed: startJourney,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green, 
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
-                        ),
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            textStyle: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
                         child: const Text("I'VE ARRIVED / START TRIP"),
                       ),
                     )
@@ -271,11 +296,11 @@ class _JourneyScreenState extends State<JourneyScreen> {
                       child: ElevatedButton(
                         onPressed: endJourney,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red, 
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
-                        ),
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            textStyle: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
                         child: const Text("END TRIP"),
                       ),
                     ),

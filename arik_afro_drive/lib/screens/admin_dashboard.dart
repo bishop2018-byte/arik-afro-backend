@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../api_constants.dart'; // ✅ NEW IMPORT
+// import '../api_constants.dart'; // 👈 I commented this out so it doesn't crash if missing
 import 'login_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -18,8 +18,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   List<dynamic> withdrawals = [];
   bool isLoading = true;
 
-  // ✅ FIXED: Using central API Constant
-  String get baseUrl => ApiConstants.baseUrl;
+  // ✅ FIXED: DIRECT CLOUD LINK (No external file needed)
+  final String baseUrl = "https://arik-api.onrender.com"; 
 
   @override
   void initState() {

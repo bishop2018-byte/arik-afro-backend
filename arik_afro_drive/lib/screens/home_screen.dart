@@ -3,7 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart'; 
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../api_constants.dart'; // ✅ NEW IMPORT
+// import '../api_constants.dart'; // ❌ Commented out to prevent potential import errors
 
 import 'login_screen.dart';
 import 'client_tracking_screen.dart'; 
@@ -24,8 +24,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _pickupController = TextEditingController();
   final TextEditingController _destController = TextEditingController();
 
-  // ✅ FIXED: Using central API Constant
-  String get baseUrl => ApiConstants.baseUrl;
+  // ✅ FIXED: DIRECT CLOUD LINK
+  final String baseUrl = "https://arik-api.onrender.com";
 
   void showBookingDialog(int driverId, String driverName) {
     _pickupController.text = "My Current Location"; 
@@ -58,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> bookRide(int driverId, String driverName, String pickup, String dest) async {
     final String url = '$baseUrl/api/trips/book';
+    // ✅ Check for both user_id and id to avoid null errors
     int clientId = widget.userData['user_id'] ?? widget.userData['id']; 
 
     try {
@@ -96,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       mapController.animateCamera(CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)));
 
-      // ✅ FIXED: Using central API Constant
+      // ✅ FIXED: Using Cloud URL with coordinates
       final String url = '$baseUrl/api/drivers/nearby?latitude=${position.latitude}&longitude=${position.longitude}';
       final response = await http.get(Uri.parse(url));
       
@@ -113,6 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       setState(() => isLoading = false);
+      print("Driver Find Error: $e");
     }
   }
 
@@ -217,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               subtitle: Text("${distance.toStringAsFixed(1)} km away"),
                               trailing: ElevatedButton(
                                 onPressed: () => showBookingDialog(driver['driver_id'], driver['full_name']),
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                                 child: const Text("Book"),
                               ),
                             );

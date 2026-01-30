@@ -21,6 +21,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   
   late String _role;
 
+  // ✅ FIXED: DIRECT CLOUD LINK
+  final String baseUrl = "https://arik-api.onrender.com";
+
   @override
   void initState() {
     super.initState();
@@ -28,8 +31,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> register() async {
+    // Basic validation
+    if (_nameController.text.trim().isEmpty || 
+        _emailController.text.trim().isEmpty || 
+        _passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill in all required fields"))
+      );
+      return;
+    }
+
     setState(() => isLoading = true);
-    final String url = 'http://10.0.2.2:5000/api/auth/register';
+
+    // ✅ FIXED: Using Render Cloud URL
+    final String url = '$baseUrl/api/auth/register';
 
     try {
       final response = await http.post(
@@ -46,13 +61,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (response.statusCode == 201) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Registration Successful! Please Login.")));
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registration Successful! Please Login."))
+        );
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (context) => const LoginScreen())
+        );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Registration Failed: ${response.body}")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Registration Failed: ${response.body}"))
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Server Error. Check connection.")));
+      print("Registration Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Server Error. Check your internet connection."))
+      );
     }
     setState(() => isLoading = false);
   }
@@ -73,7 +98,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Container(
               padding: const EdgeInsets.all(15),
               margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200, 
+                borderRadius: BorderRadius.circular(10)
+              ),
               child: Row(
                 children: [
                   Icon(_role == 'client' ? Icons.person : Icons.drive_eta, color: Colors.black54),
@@ -96,7 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 30),
             
             isLoading 
-              ? const CircularProgressIndicator()
+              ? const CircularProgressIndicator(color: Colors.black)
               : SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

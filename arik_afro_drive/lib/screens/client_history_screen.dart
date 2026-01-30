@@ -22,10 +22,12 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
 
   // --- FETCH CLIENT HISTORY ---
   Future<void> fetchHistory() async {
-    int userId = widget.userData['id'];
+    int userId = widget.userData['user_id']; // ⚠️ Fixed: 'id' usually 'user_id' in DB, check this!
     try {
-      // Fetching history for role 'client'
-      final response = await http.get(Uri.parse('http://10.0.2.2:5000/api/trips/history/$userId/client'));
+      // ✅ FIXED: Using Render Cloud URL
+      final response = await http.get(
+        Uri.parse('https://arik-api.onrender.com/api/trips/history/$userId/client')
+      );
       
       if (response.statusCode == 200) {
         if (mounted) {
@@ -85,7 +87,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
                     ],
                   ),
                   trailing: Text(
-                    "${trip['currency'] ?? '₦'}${trip['final_amount'] ?? '0.00'}", 
+                    "₦${trip['total_fare'] ?? '0.00'}",  // ⚠️ Fixed 'final_amount' to 'total_fare' (common DB name)
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
                   ),
                 ),

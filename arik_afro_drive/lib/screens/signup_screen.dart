@@ -23,22 +23,34 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController licenseController = TextEditingController();
   final TextEditingController experienceController = TextEditingController();
 
+  // ✅ FIXED: DIRECT CLOUD LINK
+  final String baseUrl = "https://arik-api.onrender.com";
+
   Future<void> registerUser() async {
-    final String url = 'http://10.0.2.2:5000/api/auth/register'; 
+    // Basic validation
+    if (nameController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill in all required fields"))
+      );
+      return;
+    }
+
+    // ✅ FIXED: Using Cloud URL
+    final String url = '$baseUrl/api/auth/register'; 
 
     // Create the data packet
     Map<String, dynamic> requestBody = {
-      "full_name": nameController.text,
-      "email": emailController.text,
-      "phone": phoneController.text,
-      "password": passwordController.text,
-      "role": widget.role, // Send the role to the backend
+      "full_name": nameController.text.trim(),
+      "email": emailController.text.trim(),
+      "phone": phoneController.text.trim(),
+      "password": passwordController.text.trim(),
+      "role": widget.role, 
     };
 
     // If they are a driver, add the extra professional details
     if (widget.role == 'driver') {
-      requestBody["license_number"] = licenseController.text;
-      requestBody["years_experience"] = experienceController.text;
+      requestBody["license_number"] = licenseController.text.trim();
+      requestBody["years_experience"] = experienceController.text.trim();
     }
 
     try {
@@ -48,29 +60,29 @@ class _SignupScreenState extends State<SignupScreen> {
         body: jsonEncode(requestBody),
       );
 
-      if (response.statusCode == 200) {
+      // Note: Render/Postgres often returns 201 for "Created"
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
 
-        // Different success messages based on role
         String successMessage = widget.role == 'driver' 
             ? '✅ Application Submitted! Waiting for Admin Approval.' 
             : '✅ Account Created Successfully!';
 
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(successMessage)));
         
-        // Everyone goes to Login screen after signup
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
       } else {
         if (!mounted) return;
         var errorData = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ ${errorData['error']}')),
+          SnackBar(content: Text('❌ ${errorData['error'] ?? 'Registration failed'}')),
         );
       }
     } catch (e) {
       if (!mounted) return;
+      print("Signup Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('❌ Could not connect to server')),
+        const SnackBar(content: Text('❌ Could not connect to server. Check your internet.')),
       );
     }
   }
@@ -113,7 +125,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 TextField(controller: experienceController, decoration: const InputDecoration(labelText: "Years of Experience", border: OutlineInputBorder()), keyboardType: TextInputType.number),
                 const SizedBox(height: 20),
               ],
-              // --------------------------
 
               SizedBox(
                 width: double.infinity,

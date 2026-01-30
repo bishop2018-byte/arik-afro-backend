@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart'; 
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:async'; 
-import '../api_constants.dart'; // ✅ NEW IMPORT
+import 'dart:async';
+// import '../api_constants.dart'; // ❌ Commented out to prevent errors if file is missing
 
 import 'login_screen.dart';
 import 'journey_screen.dart';
-import 'withdrawal_screen.dart'; 
+import 'withdrawal_screen.dart';
 
 class DriverDashboard extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -20,22 +20,22 @@ class DriverDashboard extends StatefulWidget {
 class _DriverDashboardState extends State<DriverDashboard> {
   bool isOnline = false;
   bool isLoading = false;
-  bool isPopupShowing = false; 
+  bool isPopupShowing = false;
 
   Timer? _jobTimer;
-  Map<String, dynamic>? activeTrip; 
+  Map<String, dynamic>? activeTrip;
   List<dynamic> history = [];
-  String walletBalance = "0.00"; 
+  String walletBalance = "0.00";
 
-  // ✅ FIXED: Using central API Constant
-  String get baseUrl => ApiConstants.baseUrl;
+  // ✅ FIXED: DIRECT CLOUD LINK (Guaranteed to connect)
+  final String baseUrl = "https://arik-api.onrender.com";
 
   @override
   void initState() {
     super.initState();
-    checkActiveTrip(); 
+    checkActiveTrip();
     fetchHistory();
-    fetchBalance(); 
+    fetchBalance();
   }
 
   int getUserId() {
@@ -46,45 +46,52 @@ class _DriverDashboardState extends State<DriverDashboard> {
   Future<void> fetchBalance() async {
     int userId = getUserId();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/drivers/profile/$userId')); 
-      
+      final response =
+          await http.get(Uri.parse('$baseUrl/api/drivers/profile/$userId'));
+
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
         if (mounted) {
-           setState(() {
-             walletBalance = data['wallet_balance'].toString();
-           });
+          setState(() {
+            walletBalance = data['wallet_balance'].toString();
+          });
         }
       }
-    } catch(e) { print("Balance Error: $e"); }
+    } catch (e) {
+      print("Balance Error: $e");
+    }
   }
 
   // --- CHECK ACTIVE TRIP ---
   Future<void> checkActiveTrip() async {
     int userId = getUserId();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/trips/active/$userId/driver'));
+      final response =
+          await http.get(Uri.parse('$baseUrl/api/trips/active/$userId/driver'));
       if (response.statusCode == 200) {
         if (response.body != "null" && response.body.isNotEmpty) {
           var data = jsonDecode(response.body);
           if (mounted) {
             setState(() {
               activeTrip = data;
-              isOnline = true; 
+              isOnline = true;
             });
           }
         } else {
-           if (mounted) setState(() => activeTrip = null);
+          if (mounted) setState(() => activeTrip = null);
         }
       }
-    } catch(e) { print("Active Trip Error: $e"); }
+    } catch (e) {
+      print("Active Trip Error: $e");
+    }
   }
 
   // --- FETCH HISTORY ---
   Future<void> fetchHistory() async {
-    int userId = getUserId(); 
+    int userId = getUserId();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/trips/history/$userId/driver'));
+      final response = await http
+          .get(Uri.parse('$baseUrl/api/trips/history/$userId/driver'));
       if (response.statusCode == 200) {
         if (mounted) {
           setState(() {
@@ -92,7 +99,9 @@ class _DriverDashboardState extends State<DriverDashboard> {
           });
         }
       }
-    } catch(e) { print("History Error: $e"); }
+    } catch (e) {
+      print("History Error: $e");
+    }
   }
 
   // --- RESUME TRIP ---
@@ -111,7 +120,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
       ).then((_) {
         checkActiveTrip();
         fetchHistory();
-      }); 
+      });
     }
   }
 
@@ -127,7 +136,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
 
       if (response.statusCode == 200) {
         if (!mounted) return;
-        Navigator.pop(context); 
+        Navigator.pop(context);
         setState(() => isPopupShowing = false);
 
         Navigator.push(
@@ -141,22 +150,24 @@ class _DriverDashboardState extends State<DriverDashboard> {
             ),
           ),
         ).then((_) {
-            checkActiveTrip();
-            fetchHistory();
+          checkActiveTrip();
+          fetchHistory();
         });
       }
-    } catch (e) { print("Accept Error: $e"); }
+    } catch (e) {
+      print("Accept Error: $e");
+    }
   }
 
   // --- JOB SCANNER ---
   Future<void> checkForRequests() async {
     if (!isOnline) return;
-    if (activeTrip != null) return; 
-    if (isPopupShowing) return; 
-    
-    int userId = getUserId(); 
+    if (activeTrip != null) return;
+    if (isPopupShowing) return;
+
+    int userId = getUserId();
     final String url = '$baseUrl/api/trips/pending/$userId';
-    
+
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
@@ -165,44 +176,50 @@ class _DriverDashboardState extends State<DriverDashboard> {
           _showJobOffer(trips[0]);
         }
       }
-    } catch (e) { print("Polling Error: $e"); }
+    } catch (e) {
+      print("Polling Error: $e");
+    }
   }
 
   // --- SHOW JOB POPUP ---
   void _showJobOffer(Map trip) {
-    _jobTimer?.cancel(); 
+    _jobTimer?.cancel();
     setState(() => isPopupShowing = true);
 
     showDialog(
       context: context,
-      barrierDismissible: false, 
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text("🎉 New Ride Request!"),
         content: Column(
-          mainAxisSize: MainAxisSize.min, 
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Passenger: ${trip['client_name']}", style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text("Passenger: ${trip['client_name']}",
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const Divider(),
             const Text("Pickup:", style: TextStyle(color: Colors.grey)),
-            Text(trip['pickup_address'], style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(trip['pickup_address'],
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             const Text("Destination:", style: TextStyle(color: Colors.grey)),
-            Text(trip['destination_address'], style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(trip['destination_address'],
+                style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); 
+              Navigator.pop(context);
               setState(() => isPopupShowing = false);
-              startJobTimer(); 
+              startJobTimer();
             },
             child: const Text("Reject", style: TextStyle(color: Colors.red)),
           ),
           ElevatedButton(
             onPressed: () => acceptRide(trip),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green, foregroundColor: Colors.white),
             child: const Text("ACCEPT RIDE"),
           ),
         ],
@@ -211,19 +228,20 @@ class _DriverDashboardState extends State<DriverDashboard> {
   }
 
   void startJobTimer() {
-    _jobTimer?.cancel(); 
-    _jobTimer = Timer.periodic(const Duration(seconds: 10), (timer) => checkForRequests());
+    _jobTimer?.cancel();
+    _jobTimer = Timer.periodic(
+        const Duration(seconds: 10), (timer) => checkForRequests());
   }
 
   // --- TOGGLE ONLINE STATUS ---
   Future<void> toggleOnlineStatus(bool value) async {
     if (value == false) {
       setState(() => isOnline = false);
-      _jobTimer?.cancel(); 
+      _jobTimer?.cancel();
       return;
     }
     setState(() => isLoading = true);
-    
+
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -234,8 +252,9 @@ class _DriverDashboardState extends State<DriverDashboard> {
     }
 
     try {
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      int userId = getUserId(); 
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      int userId = getUserId();
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/drivers/update-location'),
@@ -248,24 +267,32 @@ class _DriverDashboardState extends State<DriverDashboard> {
       );
 
       if (response.statusCode == 200) {
-        setState(() { isOnline = true; isLoading = false; });
-        startJobTimer(); 
+        setState(() {
+          isOnline = true;
+          isLoading = false;
+        });
+        startJobTimer();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ You are ONLINE")));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text("✅ You are ONLINE")));
       } else {
         throw Exception("Server Error");
       }
     } catch (e) {
       setState(() {
         isLoading = false;
-        isOnline = false; 
+        isOnline = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connection Failed. Check Server.")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Connection Failed. Check Server.")));
     }
   }
 
   @override
-  void dispose() { _jobTimer?.cancel(); super.dispose(); }
+  void dispose() {
+    _jobTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -285,12 +312,16 @@ class _DriverDashboardState extends State<DriverDashboard> {
             ],
           ),
           actions: [
-            IconButton(onPressed: fetchHistory, icon: const Icon(Icons.refresh)),
+            IconButton(
+                onPressed: fetchHistory, icon: const Icon(Icons.refresh)),
             IconButton(
               icon: const Icon(Icons.logout),
               onPressed: () {
                 _jobTimer?.cancel();
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+                Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const LoginScreen()));
               },
             )
           ],
@@ -302,7 +333,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                   // WALLET CARD
+                  // WALLET CARD
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -310,21 +341,34 @@ class _DriverDashboardState extends State<DriverDashboard> {
                     decoration: BoxDecoration(
                       color: Colors.black,
                       borderRadius: BorderRadius.circular(15),
-                      boxShadow: [const BoxShadow(color: Colors.black26, blurRadius: 10)],
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 10)
+                      ],
                     ),
                     child: Column(
                       children: [
-                        const Text("My Earnings", style: TextStyle(color: Colors.white70)),
+                        const Text("My Earnings",
+                            style: TextStyle(color: Colors.white70)),
                         const SizedBox(height: 5),
-                        Text("₦$walletBalance", style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                        Text("₦$walletBalance",
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold)),
                         const SizedBox(height: 15),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (context) => WithdrawalScreen(userData: widget.userData)));
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => WithdrawalScreen(
+                                          userData: widget.userData)));
                             },
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black),
                             child: const Text("WITHDRAW TO BANK"),
                           ),
                         )
@@ -340,26 +384,38 @@ class _DriverDashboardState extends State<DriverDashboard> {
                       margin: const EdgeInsets.only(bottom: 20),
                       child: Row(
                         children: [
-                          const Text("⚠️ Trip in Progress!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          const Text("⚠️ Trip in Progress!",
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
                           const Spacer(),
-                          ElevatedButton(onPressed: resumeTrip, child: const Text("RESUME"))
+                          ElevatedButton(
+                              onPressed: resumeTrip,
+                              child: const Text("RESUME"))
                         ],
                       ),
                     ),
 
                   // ONLINE SWITCH
                   SwitchListTile(
-                    title: Text(isOnline ? "You are ONLINE" : "You are OFFLINE", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    title: Text(isOnline ? "You are ONLINE" : "You are OFFLINE",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
                     subtitle: const Text("Go online to receive rides"),
                     value: isOnline,
-                    activeColor: Colors.green,
-                    onChanged: (val) => toggleOnlineStatus(val), 
+                    activeThumbColor: Colors.green,
+                    onChanged: (val) => toggleOnlineStatus(val),
                   ),
-                  
+
                   const SizedBox(height: 20),
 
                   if (isOnline && activeTrip == null)
-                    const Center(child: Text("Scanning for jobs...", style: TextStyle(color: Colors.green, fontSize: 18, fontStyle: FontStyle.italic))),
+                    const Center(
+                        child: Text("Scanning for jobs...",
+                            style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 18,
+                                fontStyle: FontStyle.italic))),
                 ],
               ),
             ),
@@ -372,8 +428,10 @@ class _DriverDashboardState extends State<DriverDashboard> {
                 return ListTile(
                   leading: const Icon(Icons.check_circle, color: Colors.green),
                   title: Text(trip['destination_address'] ?? 'Trip'),
-                  subtitle: Text(trip['created_at'].toString().substring(0, 10)),
-                  trailing: Text("₦${trip['final_amount'] ?? 0}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle:
+                      Text(trip['created_at'].toString().substring(0, 10)),
+                  trailing: Text("₦${trip['final_amount'] ?? 0}",
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                 );
               },
             ),

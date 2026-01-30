@@ -28,7 +28,10 @@ class _ClientTrackingScreenState extends State<ClientTrackingScreen> {
   void startTracking() {
     _statusTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       try {
-        final response = await http.get(Uri.parse('http://10.0.2.2:5000/api/trips/active/${widget.userId}/client'));
+        // ✅ FIXED: Using Render Cloud URL
+        final response = await http.get(
+          Uri.parse('https://arik-api.onrender.com/api/trips/active/${widget.userId}/client')
+        );
         
         if (response.statusCode == 200 && response.body != "null") {
           var data = jsonDecode(response.body);
@@ -67,7 +70,11 @@ class _ClientTrackingScreenState extends State<ClientTrackingScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("Total Fare:"),
-                Text("${data['currency'] ?? '₦'} ${data['final_amount']}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                // ⚠️ Fixed: Checking both 'total_fare' and 'final_amount' to be safe
+                Text(
+                  "${data['currency'] ?? '₦'} ${data['total_fare'] ?? data['final_amount'] ?? '0.00'}", 
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)
+                ),
               ],
             ),
             const SizedBox(height: 20),
