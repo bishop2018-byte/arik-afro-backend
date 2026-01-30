@@ -7,7 +7,6 @@ const poolConfig = {
   connectionString: process.env.DATABASE_URL,
 };
 
-// ✅ Use SSL for external connections (like your laptop)
 if (process.env.DATABASE_URL && !isRenderInternal) {
   poolConfig.ssl = {
     rejectUnauthorized: false
@@ -16,35 +15,36 @@ if (process.env.DATABASE_URL && !isRenderInternal) {
 
 const pool = new Pool(poolConfig);
 
-// ✅ AUTOMATIC TABLE INITIALIZATION
-// This runs every time the server starts to ensure the 'drivers' table exists.
+// ✅ UPDATED INITIALIZATION: This forces the columns to be added
 const initDB = async () => {
   try {
+    // 1. Ensure the table exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS drivers (
         driver_id SERIAL PRIMARY KEY,
         user_id INTEGER UNIQUE NOT NULL,
-        latitude DOUBLE PRECISION,
-        longitude DOUBLE PRECISION,
         is_online BOOLEAN DEFAULT FALSE,
-        is_verified BOOLEAN DEFAULT TRUE,
-        last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        is_verified BOOLEAN DEFAULT TRUE
       );
     `);
-    console.log("✅ Drivers table is verified/created! - db.js:34");
+
+    // 2. FORCE ADD missing columns if they don't exist
+    await pool.query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;`);
+    await pool.query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;`);
+    await pool.query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`);
+
+    console.log("✅ Database Schema Updated: Latitude/Longitude columns are ready! - db.js:36");
   } catch (err) {
-    console.error("❌ Error initializing DB: - db.js:36", err.message);
+    console.error("❌ Error initializing DB: - db.js:38", err.message);
   }
 };
 
 initDB();
 
 pool.on('error', (err) => {
-  console.error('❌ Unexpected error on idle client - db.js:43', err);
+  console.error('❌ Unexpected error on idle client - db.js:45', err);
 });
 
-console.log(isRenderInternal ? "🛡️ Using INTERNAL Private Network - db.js:46" : "☁️ Using EXTERNAL Network (SSL Enabled)");
+console.log(isRenderInternal ? "🛡️ Using INTERNAL Private Network - db.js:48" : "☁️ Using EXTERNAL Network (SSL Enabled)");
 
-// ✅ EXPORT THE FULL POOL
-// This ensures driverController.js can access pool.query correctly
 module.exports = pool;
